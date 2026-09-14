@@ -23,6 +23,12 @@ export const proposals = sqliteTable("proposals", {
 export const clientAccessLinks = sqliteTable("client_access_links", {
  id:text("id").primaryKey(), workspace_id:text("workspace_id").notNull().references(()=>workspaces.id), change_id:text("change_id").notNull().references(()=>changes.id), proposal_version:integer("proposal_version").notNull(), token_hash:text("token_hash").notNull(), client_email:text("client_email").notNull(), expires_at:text("expires_at").notNull(), revoked_at:text("revoked_at").notNull().default(""), used_at:text("used_at").notNull().default(""), created_by:text("created_by").notNull(), created_at:text("created_at").notNull()
 },t=>[uniqueIndex("idx_client_access_token_hash").on(t.token_hash),index("idx_client_access_change").on(t.change_id)]);
+export const workspaceDeletionRequests = sqliteTable("workspace_deletion_requests", {
+ id:text("id").primaryKey(), workspace_id:text("workspace_id").notNull().references(()=>workspaces.id), requested_by:text("requested_by").notNull(), requested_at:text("requested_at").notNull(), eligible_after:text("eligible_after").notNull(), cancelled_at:text("cancelled_at").notNull().default("")
+},t=>[index("idx_workspace_deletion_requests_workspace").on(t.workspace_id,t.requested_at)]);
+export const rateLimits = sqliteTable("rate_limits", {
+ bucket_key:text("bucket_key").primaryKey(), window_start:integer("window_start").notNull(), count:integer("count").notNull(), updated_at:text("updated_at").notNull()
+},t=>[index("idx_rate_limits_updated").on(t.updated_at)]);
 export const events = sqliteTable("events", {
  id:text("id").primaryKey(), workspace_id:text("workspace_id").notNull().references(()=>workspaces.id), entity_id:text("entity_id").notNull(), action:text("action").notNull(), actor:text("actor").notNull(), detail:text("detail").notNull(), created_at:text("created_at").notNull()
 },t=>[index("idx_events_workspace_created").on(t.workspace_id,t.created_at)]);
