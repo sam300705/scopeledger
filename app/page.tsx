@@ -1,2 +1,2 @@
 import WorkspaceApp from "./workspace-app";
-export default function Home() { return <WorkspaceApp />; }
+export default function Home() { return <><WorkspaceApp/><a href="/manage" aria-label="Open commercial and operations controls" style={{position:"fixed",right:16,bottom:16,zIndex:80,background:"#172033",color:"white",padding:"10px 14px",borderRadius:999,textDecoration:"none",fontSize:13,fontWeight:700,boxShadow:"0 8px 24px rgba(23,32,51,.18)"}}>Commercial controls</a></>; }
