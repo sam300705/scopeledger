@@ -4,15 +4,17 @@ This document describes what is implemented in the repository and what still req
 
 ## Current hosting boundary
 
-The existing ChatGPT Site uses the hosting platform's authenticated user context and D1 binding. Workspace roles are enforced by ScopeLedger, but they do not expand the hosting platform's audience. A person can be invited to a workspace and still be unable to reach the Site if the hosting audience does not permit them.
+The existing ChatGPT Site uses the hosting platform's authenticated user context and D1 binding. Workspace roles are enforced by ScopeLedger, but they do not expand the hosting platform's audience. A person can be invited to a workspace and still be unable to reach the Site if the Site audience does not permit them.
 
-Do not deploy the current ChatGPT identity adapter to a public server that accepts user identity through arbitrary request headers. A commercial migration must use a host-supported authentication mechanism that validates sessions/tokens server-side before `authorize()` is reached.
+Current ChatGPT Sites sharing supports selected external viewers where enabled for the owner's plan/workspace. That means a paid pilot does not automatically require a hosting migration: the safer first option is selected external viewers plus matching ScopeLedger workspace membership, followed by real visitor verification. Site audience changes remain an owner-controlled production access change and must be explicitly authorized.
+
+Do not deploy the current ChatGPT identity adapter to a public server that accepts user identity through arbitrary request headers. If Sites sharing/sign-in cannot satisfy the required customer access model, a migration must use a host-supported authentication mechanism that validates sessions/tokens server-side before `authorize()` is reached.
 
 ## Invitation rollout
 
 The repository supports expiring, revocable workspace invitations. The raw invitation token is returned only when created; only its SHA-256 hash is stored. Acceptance requires a signed-in identity whose normalized email exactly matches the invitation email. Revoked, expired and already accepted invitations fail closed.
 
-On the current private Site this does not solve hosting audience restrictions. Before external customers are invited, migrate to supported commercial authentication and verify sign-in with at least two independent test accounts from different companies.
+On the currently owner-private Site, the owner must separately grant the intended company user Site viewing access using the supported sharing controls. Before external customers are invited at scale, verify the combined Site-sharing + ScopeLedger-invitation flow with at least two independent test accounts from different companies. If the necessary external-viewer controls are unavailable for this account/workspace, migrate to a supported commercial authentication host instead of trusting spoofable identity headers.
 
 ## Client approval portal
 
@@ -22,7 +24,7 @@ The proposal shown to the client contains the immutable project scope/budget/dat
 
 Client decisions are labelled `client_portal`; staff-recorded evidence is labelled `staff_recorded`. The portal is not described as a certified electronic-signature service.
 
-Do not send real client links until the externally reachable host and access model have been approved and browser-tested.
+Do not send real client links until the hardening build, migrations and intended Site audience/sign-in flow have been approved and browser-tested.
 
 ## Email and reminders
 
@@ -39,7 +41,7 @@ A future provider integration must include:
 
 ## Payments
 
-Subscriptions are intentionally not implemented. Add billing only after the core workflow is deployed with commercial authentication and a payment-provider business account is available. Verified webhook signatures, idempotent/out-of-order event handling and server-side entitlement checks are mandatory. Never use test success states as proof of a paid subscription.
+Subscriptions are intentionally not implemented. Add billing only after the core workflow is deployed with verified customer access and a payment-provider business account is available. Verified webhook signatures, idempotent/out-of-order event handling and server-side entitlement checks are mandatory. Never use test success states as proof of a paid subscription.
 
 ## Backup and restore
 
@@ -83,11 +85,11 @@ For suspected tenant leakage, account compromise or incorrect client approval:
 
 ### Internal pilot
 
-Suitable only when CI passes and migrations are applied to an isolated pilot environment. The current private ChatGPT hosting model is acceptable for owner/internal testing.
+Suitable only when CI passes and migrations are applied to an isolated pilot environment. The current owner-private ChatGPT hosting model is acceptable for owner/internal testing.
 
 ### Paid pilot
 
-Requires, at minimum: externally supported customer authentication/hosting, production migration verification, real browser multi-account testing, a tested backup/restore procedure, monitoring/error reporting, approved email delivery setup if email is part of the offer, and a reviewed deletion/retention procedure.
+Requires, at minimum: verified customer access (selected external Sites viewers where supported, or a migrated commercial auth host), production migration verification, real browser multi-account testing, a tested backup/restore procedure, monitoring/error reporting, approved email delivery setup if email is part of the offer, and a reviewed deletion/retention procedure.
 
 ### General customer use
 
