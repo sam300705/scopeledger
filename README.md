@@ -22,19 +22,19 @@ A working B2B pilot for fixed-scope service firms: preserve the agreed scope, pr
 
 ## Scope and honest limitations
 
-This remains an **internal-pilot codebase**, not a general-customer production service. The currently deployed ChatGPT Site is owner-private. Workspace invitations do not expand the hosting platform's audience, so external company access still requires migration to a host/authentication model designed for commercial customer sign-in.
+This remains an **internal-pilot codebase**, not a general-customer production service. The currently deployed Site is owner-private. Current ChatGPT Sites sharing can support selected external viewers where the owner's plan/workspace permits it, but Site audience and ScopeLedger workspace membership are separate controls. A company user needs both Site access and the appropriate ScopeLedger membership/invitation. Production audience changes must be deliberate and browser-tested with the intended visitor account.
 
-Authentication currently uses the hosting platform's ChatGPT sign-in and trusted identity context. **Do not redeploy this identity adapter behind a public endpoint that trusts caller-controlled identity headers.** A commercial host must validate sessions/tokens server-side and pass a verified identity into the authorization layer.
+Authentication currently uses the hosting platform's ChatGPT sign-in/trusted identity context. **Do not redeploy this identity adapter behind a public endpoint that trusts caller-controlled identity headers.** If Sites sharing/sign-in cannot meet the commercial audience requirements for this account, migrate to a host/authentication system that validates sessions/tokens server-side before the ScopeLedger authorization layer.
 
-The client approval portal is implemented in the application, but it must not be sent to real clients until the application is deployed at an externally reachable, reviewed host. Client decisions are workflow records, not certified electronic signatures.
+The client approval portal is implemented in the application, but it must not be sent to real clients until the hardening branch is deployed, migrations are applied, and the selected audience/sign-in behavior has been verified from a real client account. Client decisions are workflow records, not certified electronic signatures.
 
 Email sending and reminders are intentionally not faked: no provider is configured, so there is no claim of delivery. File uploads, AI classification and subscriptions are also not required for the core product. Payment collection/subscriptions must wait for an approved payment-provider business account and verified webhook implementation.
 
-A production D1 backup/restore has not been demonstrated because this repository/session does not have the required hosting data-plane credentials. Existing CSV export is not a full database backup. Automated customer deletion/retention and production monitoring/error-reporting still require rollout work. See `docs/OPERATIONS.md` for the exact readiness gates.
+A production D1 backup/restore has not been demonstrated because this repository/session does not have the required hosting data-plane controls. Existing CSV export is not a full database backup. Automated customer deletion/retention and production monitoring/error-reporting still require rollout work. See `docs/OPERATIONS.md` for the exact readiness gates.
 
 The pilot has soft caps of 20 workspaces/account, 200 projects/workspace and 2,000 change requests/workspace. The activity API returns the latest 500 entries; export contains full activity history.
 
-No live external multi-company browser acceptance test has been completed for this hardening branch because the current Site is private and this branch has not been deployed. Passing CI is not proof of production readiness.
+No live external multi-company browser acceptance test has been completed for this hardening branch because the branch has not been deployed and the current Site audience has not been expanded. Passing CI is not proof of production readiness.
 
 ## Stack and setup
 
@@ -57,7 +57,7 @@ Schema changes belong in `db/schema.ts` plus additive migration files under `dri
 
 `tests/integration.cjs` executes the actual TypeScript API handlers against in-memory SQLite, substituting only the hosting identity transport and D1 adapter. Coverage includes anonymous access, persistence, cross-company isolation, origin rejection, validation, project-id isolation, role permissions, staff approval evidence, stale updates, delivery/history preservation, immutable amendments, draft editing/submission, proposal snapshots, expiring client links, replay protection, client email/confirmation checks, direct-vs-staff decision provenance, separate approved/invoiced/paid values, project archiving, invitation identity matching, CSV safety, access revocation, sample-data isolation and indexed queries.
 
-It is not a substitute for Cloudflare D1 behaviour, the hosting identity dispatcher or browser testing of a deployed customer-facing host.
+It is not a substitute for Cloudflare D1 behaviour, the hosting identity dispatcher or browser testing of a deployed customer-facing audience.
 
 ## Repository guide
 
@@ -83,7 +83,7 @@ Repository: https://github.com/sam300705/scopeledger
 
 Existing owner-private pilot: https://scopeledger-sambhav.joseph22012004.chatgpt.site
 
-GitHub Actions runs the integration suite, TypeScript checks and production build. Pushing to GitHub alone does not deploy this application, and the owner-private pilot should not be represented as a commercial customer deployment.
+GitHub Actions runs the integration suite, TypeScript checks and production build. Pushing to GitHub alone does not deploy this application, and the owner-private pilot should not be represented as a commercial customer deployment until its audience and real visitor flow are explicitly verified.
 
 ## Ownership
 
