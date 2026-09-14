@@ -19,8 +19,8 @@ export const memberInput=z.object({email:z.string().trim().email().max(254).tran
 export const invitationInput=z.object({email:z.string().trim().email().max(254).transform(x=>x.toLowerCase()),role:z.enum(["editor","reviewer","viewer"]),expires_hours:z.number().int().min(1).max(168).default(72)}).strict();
 export const clientLinkInput=z.object({change_id:short,version:z.number().int().positive(),expires_hours:z.number().int().min(1).max(168).default(72)}).strict();
 export const clientDecisionInput=z.object({token:z.string().min(32).max(512),proposal_version:z.number().int().positive(),client_email:z.string().trim().email().max(254).transform(x=>x.toLowerCase()),decision:z.enum(["approved","rejected","clarification"]),confirmation:z.boolean(),message:z.string().trim().max(4000).default("")}).strict().superRefine((v,ctx)=>{if((v.decision==="approved"||v.decision==="rejected")&&!v.confirmation)ctx.addIssue({code:"custom",path:["confirmation"],message:"Confirm the scope, fee and schedule impact"});if(v.decision==="clarification"&&v.message.length<3)ctx.addIssue({code:"custom",path:["message"],message:"Tell the team what needs clarification"});});
-export const deletionRequestInput=z.object({workspace_name:short,confirmation:z.literal("DELETE")}).strict();
-export const deletionCancelInput=z.object({request_id:short}).strict();
+export const deletionRequestInput=z.object({action:z.literal("request"),workspace_name:short,confirmation:z.literal("DELETE")}).strict();
+export const deletionCancelInput=z.object({action:z.literal("cancel"),request_id:short}).strict();
 export const deletionFinalizeInput=z.object({request_id:short,workspace_name:short,confirmation:z.literal("DELETE PERMANENTLY")}).strict();
 export type Role="owner"|"editor"|"reviewer"|"viewer";
 export function canTransition(role:Role,from:string,to:string){return from==="pending"&&((to==="approved"||to==="rejected")&&(role==="owner"||role==="reviewer")||to==="withdrawn"&&(role==="owner"||role==="editor"))||from==="approved"&&to==="delivered"&&(role==="owner"||role==="editor");}
