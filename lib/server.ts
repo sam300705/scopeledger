@@ -1,10 +1,10 @@
 import { env } from "cloudflare:workers";
-import { getChatGPTUser } from "@/app/chatgpt-auth";
+import { chatGPTSitesIdentityProvider } from "./identity";
 import { ZodError } from "zod";
 import type { Role } from "./domain";
 export class ApiError extends Error {constructor(public status:number,message:string){super(message);}}
 export function db(){if(!env.DB)throw new ApiError(503,"Records are temporarily unavailable. Please try again.");return env.DB;}
-export async function identity(){const u=await getChatGPTUser();if(!u)throw new ApiError(401,"Sign in with ChatGPT to open your workspace.");return {...u,email:u.email.toLowerCase()};}
+export async function identity(){const u=await chatGPTSitesIdentityProvider.getUser();if(!u)throw new ApiError(401,"Sign in with ChatGPT to open your workspace.");return u;}
 export async function authorize(id:string){const u=await identity();const w=await db().prepare("SELECT w.*, CASE WHEN w.owner_id=? THEN 'owner' ELSE m.role END AS role FROM workspaces w LEFT JOIN members m ON m.workspace_id=w.id AND m.email=? WHERE w.id=? AND (w.owner_id=? OR m.id IS NOT NULL)").bind(u.userId,u.email,id,u.userId).first<{id:string;owner_id:string;name:string;currency:string;demo:number;role:Role}>();if(!w)throw new ApiError(404,"Workspace not found or access was removed.");return {u,w};}
 export function requireRole(role:Role,roles:Role[]){if(!roles.includes(role))throw new ApiError(403,"Your workspace role does not allow this action.");}
 export async function body(request:Request){const origin=request.headers.get("origin");if(origin&&origin!==new URL(request.url).origin)throw new ApiError(403,"Cross-origin changes are not allowed.");if(request.headers.get("sec-fetch-site")==="cross-site")throw new ApiError(403,"Cross-site changes are not allowed.");if(!request.headers.get("content-type")?.includes("application/json"))throw new ApiError(415,"Use JSON for this request.");const raw=await request.text();if(raw.length>30000)throw new ApiError(413,"This request is too large.");try{return JSON.parse(raw);}catch{throw new ApiError(400,"Invalid JSON.");}}
