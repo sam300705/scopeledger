@@ -3,8 +3,8 @@ export const workspaces = sqliteTable("workspaces", {
  id:text("id").primaryKey(), owner_id:text("owner_id").notNull(), name:text("name").notNull(), currency:text("currency").notNull(), created_at:text("created_at").notNull(), demo:integer("demo").notNull().default(0)
 },t=>[index("idx_workspaces_owner").on(t.owner_id)]);
 export const members = sqliteTable("members", {
- id:text("id").primaryKey(), workspace_id:text("workspace_id").notNull().references(()=>workspaces.id), email:text("email").notNull(), role:text("role").notNull(), created_at:text("created_at").notNull()
-},t=>[uniqueIndex("idx_members_workspace_email").on(t.workspace_id,t.email),index("idx_members_email").on(t.email)]);
+ id:text("id").primaryKey(), workspace_id:text("workspace_id").notNull().references(()=>workspaces.id), user_id:text("user_id"), email:text("email").notNull(), role:text("role").notNull(), created_at:text("created_at").notNull()
+},t=>[uniqueIndex("idx_members_workspace_email").on(t.workspace_id,t.email),uniqueIndex("idx_members_workspace_user").on(t.workspace_id,t.user_id),index("idx_members_email").on(t.email)]);
 export const invitations = sqliteTable("invitations", {
  id:text("id").primaryKey(), workspace_id:text("workspace_id").notNull().references(()=>workspaces.id), email:text("email").notNull(), role:text("role").notNull(), token_hash:text("token_hash").notNull(), expires_at:text("expires_at").notNull(), revoked_at:text("revoked_at").notNull().default(""), accepted_at:text("accepted_at").notNull().default(""), created_by:text("created_by").notNull(), created_at:text("created_at").notNull()
 },t=>[uniqueIndex("idx_invitations_token_hash").on(t.token_hash),index("idx_invitations_workspace_email").on(t.workspace_id,t.email)]);
