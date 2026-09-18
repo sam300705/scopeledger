@@ -1,6 +1,7 @@
 import { z } from "zod";
 const short=z.string().trim().min(1).max(160);
 const money=z.number().int().min(0).max(100000000000);
+const positiveMoney=z.number().int().min(1).max(100000000000);
 export const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>!Number.isNaN(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v,"Use a valid date");
 export const workspaceInput=z.object({name:short,currency:z.enum(["INR","USD","EUR","GBP"]),demo:z.boolean().default(false)}).strict();
 export const projectInput=z.object({name:short,client:short,client_email:z.string().trim().email().max(254),scope:z.string().trim().min(10).max(10000),budget:money,rate:z.number().int().min(1).max(100000000),due_date:date}).strict();
@@ -14,7 +15,12 @@ const proposalTerms={title:short,description:z.string().trim().min(10).max(10000
 export const changeInput=z.object({project_id:short,...proposalTerms,status:z.enum(["draft","pending"]).default("pending")}).strict().superRefine((v,ctx)=>{if(v.pricing_mode==="fixed"&&v.fixed_fee===undefined)ctx.addIssue({code:"custom",path:["fixed_fee"],message:"Fixed fee is required"});if(v.pricing_mode==="itemized"&&!v.line_items.length)ctx.addIssue({code:"custom",path:["line_items"],message:"At least one line item is required"});});
 export const changeEditInput=z.object({id:short,version:z.number().int().positive(),action:z.enum(["save_draft","submit","revise"]),...proposalTerms}).strict().superRefine((v,ctx)=>{if(v.pricing_mode==="fixed"&&v.fixed_fee===undefined)ctx.addIssue({code:"custom",path:["fixed_fee"],message:"Fixed fee is required"});if(v.pricing_mode==="itemized"&&!v.line_items.length)ctx.addIssue({code:"custom",path:["line_items"],message:"At least one line item is required"});});
 export const decisionInput=z.object({id:short,version:z.number().int().positive(),status:z.enum(["approved","rejected","withdrawn","delivered"]),approver:z.string().trim().max(254).default(""),evidence:z.string().trim().min(10).max(4000)}).strict().superRefine((v,ctx)=>{if(v.status==="approved"&&!z.string().email().safeParse(v.approver).success)ctx.addIssue({code:"custom",path:["approver"],message:"Client approver email is required"});});
-export const financeInput=z.object({id:short,version:z.number().int().positive(),invoiced_amount:money,paid_amount:money}).strict().superRefine((v,ctx)=>{if(v.paid_amount>v.invoiced_amount)ctx.addIssue({code:"custom",path:["paid_amount"],message:"Paid amount cannot exceed invoiced amount"});});
+export const financeActionInput=z.discriminatedUnion("action",[
+ z.object({action:z.literal("invoice"),change_id:short,version:z.number().int().positive(),amount:positiveMoney,reference:z.string().trim().max(160).default(""),due_date:z.union([date,z.literal("")]).default("")}).strict(),
+ z.object({action:z.literal("payment"),change_id:short,version:z.number().int().positive(),invoice_id:short,amount:positiveMoney,reference:z.string().trim().max(160).default("")}).strict(),
+ z.object({action:z.literal("void_invoice"),change_id:short,version:z.number().int().positive(),invoice_id:short,reason:z.string().trim().min(10).max(2000)}).strict(),
+ z.object({action:z.literal("reverse_payment"),change_id:short,version:z.number().int().positive(),payment_id:short,reason:z.string().trim().min(10).max(2000)}).strict()
+]);
 export const memberInput=z.object({email:z.string().trim().email().max(254).transform(x=>x.toLowerCase()),role:z.enum(["editor","reviewer","viewer"])}).strict();
 export const invitationInput=z.object({email:z.string().trim().email().max(254).transform(x=>x.toLowerCase()),role:z.enum(["editor","reviewer","viewer"]),expires_hours:z.number().int().min(1).max(168).default(72)}).strict();
 export const clientLinkInput=z.object({change_id:short,version:z.number().int().positive(),expires_hours:z.number().int().min(1).max(168).default(72)}).strict();
