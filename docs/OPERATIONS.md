@@ -18,7 +18,7 @@ The main workspace links to this control center. The control center exposes pers
 
 ## Invitation rollout
 
-The repository supports expiring, revocable workspace invitations. The raw invitation token is returned only when created; only its SHA-256 hash is stored. Owner invitation listings and company exports exclude the stored token hash. Acceptance is handled by `/accept-invite` and requires a signed-in identity whose normalized email exactly matches the invitation email. Revoked, expired and already accepted invitations fail closed.
+The repository supports expiring, revocable workspace invitations. The raw invitation token is returned only when created; only its SHA-256 hash is stored. Owner invitation listings and company exports exclude the stored token hash. Acceptance is handled by `/accept-invite` and requires a signed-in identity whose normalized email exactly matches the invitation email. On acceptance the membership is bound to the authenticated provider user ID. Legacy email-only memberships are claimed once on first matching authenticated use; after binding, the stable user ID is authoritative, so reusing the old email from another account does not inherit access while the same account can continue after an email change. Revoked, expired and already accepted invitations fail closed.
 
 Invitation creation is throttled per owner/workspace. Public capability attempts use independent token, trusted-edge IP and IP+token buckets, with stale rate-limit rows pruned automatically. `CF-Connecting-IP` is hashed when supplied by the trusted Cloudflare edge; raw IP addresses are not stored and arbitrary `X-Forwarded-For` is not trusted for this control.
 
