@@ -4,6 +4,8 @@ import { decodeCursor,optionalSearch,pageLimit,pageResult } from "@/lib/paginati
 export async function GET(request:Request){try{
  const url=new URL(request.url),wid=url.searchParams.get("workspace")||"";
  await authorize(wid);
+ const projectId=url.searchParams.get("id")||"";
+ if(projectId){if(projectId.length>200)throw new ApiError(400,"project id is too long.");const item=await db().prepare("SELECT p.id,p.name,p.client,p.client_email,p.scope,p.budget,p.rate,p.due_date,p.created_at,p.archived_at,(SELECT COUNT(*) FROM changes c WHERE c.project_id=p.id AND c.workspace_id=p.workspace_id) AS change_count,(SELECT COALESCE(SUM(c.approved_amount),0) FROM changes c WHERE c.project_id=p.id AND c.workspace_id=p.workspace_id AND c.status IN ('approved','delivered')) AS approved_additions FROM projects p WHERE p.workspace_id=? AND p.id=?").bind(wid,projectId).first();if(!item)throw new ApiError(404,"Project not found.");return json({item});}
  const limit=pageLimit(url),cursor=decodeCursor(url.searchParams.get("cursor")),search=optionalSearch(url.searchParams.get("search")),status=url.searchParams.get("status")||"all";
  if(!["all","active","archived"].includes(status))throw new ApiError(400,"status must be all, active, or archived.");
  const prefix=search.replace(/[\\%_]/g,"\\$&")+"%",cursorAt=cursor?.createdAt||"",cursorId=cursor?.id||"";
