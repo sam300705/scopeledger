@@ -35,6 +35,9 @@ export const workspaceDeletionRequests = sqliteTable("workspace_deletion_request
 export const rateLimits = sqliteTable("rate_limits", {
  bucket_key:text("bucket_key").primaryKey(), window_start:integer("window_start").notNull(), count:integer("count").notNull(), updated_at:text("updated_at").notNull()
 },t=>[index("idx_rate_limits_updated").on(t.updated_at)]);
+export const idempotencyKeys = sqliteTable("idempotency_keys", {
+ id:text("id").primaryKey(), workspace_id:text("workspace_id").notNull().references(()=>workspaces.id), actor_id:text("actor_id").notNull(), operation:text("operation").notNull(), request_key:text("request_key").notNull(), request_hash:text("request_hash").notNull().default(""), response_json:text("response_json").notNull(), status_code:integer("status_code").notNull(), created_at:text("created_at").notNull()
+},t=>[uniqueIndex("idx_idempotency_scope").on(t.workspace_id,t.actor_id,t.operation,t.request_key),index("idx_idempotency_created").on(t.created_at)]);
 export const events = sqliteTable("events", {
  id:text("id").primaryKey(), workspace_id:text("workspace_id").notNull().references(()=>workspaces.id), entity_id:text("entity_id").notNull(), action:text("action").notNull(), actor:text("actor").notNull(), detail:text("detail").notNull(), created_at:text("created_at").notNull()
 },t=>[index("idx_events_workspace_created").on(t.workspace_id,t.created_at)]);
