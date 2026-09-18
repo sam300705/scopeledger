@@ -14,13 +14,13 @@ Do not deploy the current ChatGPT identity adapter to a public server that accep
 
 The hardening branch includes `/manage`, an authenticated staff control center. It exposes the commercial workflows that previously existed mainly as server APIs: draft creation/editing, submitted proposal revision, client-link generation, versioned project amendments, archive/restore, invoiced/paid tracking, invitations, member role changes/removal, exports and the controlled data-deletion workflow.
 
-The main workspace links to this control center. The UI deliberately shows email, reminders and payments as disabled when their providers are unavailable instead of implying that an external action succeeded.
+The main workspace links to this control center. The control center exposes persistent client-link metadata plus invoice/payment ledger recording and correction workflows. The UI deliberately shows external email, reminders and subscription/payment-collection integrations as disabled when their providers are unavailable instead of implying that an external action succeeded.
 
 ## Invitation rollout
 
 The repository supports expiring, revocable workspace invitations. The raw invitation token is returned only when created; only its SHA-256 hash is stored. Owner invitation listings and company exports exclude the stored token hash. Acceptance is handled by `/accept-invite` and requires a signed-in identity whose normalized email exactly matches the invitation email. Revoked, expired and already accepted invitations fail closed.
 
-Invitation creation is throttled per owner/workspace. Public acceptance attempts are durably throttled using a derived bucket built from the capability-token hash and, when supplied by the trusted Cloudflare edge, a hash of `CF-Connecting-IP`. Raw IP addresses are not stored and arbitrary `X-Forwarded-For` is not trusted for this control.
+Invitation creation is throttled per owner/workspace. Public capability attempts use independent token, trusted-edge IP and IP+token buckets, with stale rate-limit rows pruned automatically. `CF-Connecting-IP` is hashed when supplied by the trusted Cloudflare edge; raw IP addresses are not stored and arbitrary `X-Forwarded-For` is not trusted for this control.
 
 On the currently owner-private Site, the owner must separately grant the intended company user Site viewing access using the supported sharing controls. Before external customers are invited at scale, verify the combined Site-sharing + ScopeLedger-invitation flow with at least two independent test accounts from different companies. If the necessary external-viewer controls are unavailable for this account/workspace, migrate to a supported commercial authentication host instead of trusting spoofable identity headers.
 
@@ -36,7 +36,7 @@ Do not send real client links until the hardening build, migrations and intended
 
 ## Company export and deletion
 
-Owners can download a full application-level JSON export containing workspace metadata, members, safe invitation metadata, projects, project amendments, changes, proposal snapshots, safe client-link metadata, events and deletion-request history. Raw capability tokens and token hashes are excluded. Existing CSV exports remain formula-injection protected and now distinguish estimated, approved, delivered, invoiced and paid values.
+Owners can download a full application-level JSON export containing workspace metadata, members, safe invitation metadata, projects, project amendments, changes, proposal snapshots, safe client-link metadata, invoice/payment ledger history, events and deletion-request history. Raw capability tokens and token hashes are excluded. Existing CSV exports remain formula-injection protected and distinguish estimated, approved, delivered, invoiced and paid values. Commercial corrections do not silently overwrite invoice/payment history: payments are reversed explicitly and invoices are voided explicitly; the change-level totals are maintained as derived compatibility fields.
 
 Workspace deletion is controlled rather than immediate. An owner must create a deletion request by typing the exact workspace name plus `DELETE`. A 24-hour cool-off follows and can be cancelled. Permanent finalization requires the same owner context, exact workspace name and `DELETE PERMANENTLY`; dependent application records are deleted in foreign-key-safe order. The test suite exercises finalization only against isolated test workspaces.
 
