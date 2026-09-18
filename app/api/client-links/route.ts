@@ -1,12 +1,16 @@
 import { authorize,requireRole,db,body,json,failure,audit,ApiError,randomToken,hashToken,expiresIn } from "@/lib/server";
 import { clientLinkInput } from "@/lib/domain";
+import { decodeCursor,optionalSearch,pageLimit,pageResult } from "@/lib/pagination";
 
 export async function GET(request:Request){try{
  const url=new URL(request.url),wid=url.searchParams.get("workspace")||"";
  const {w}=await authorize(wid);requireRole(w.role,["owner","editor","reviewer"]);
- const rawLimit=Number(url.searchParams.get("limit")||100),limit=Number.isFinite(rawLimit)?Math.min(Math.max(Math.trunc(rawLimit),1),200):100;
- const rows=await db().prepare("SELECT l.id,l.change_id,l.proposal_version,l.client_email,l.expires_at,l.revoked_at,l.used_at,l.created_by,l.created_at,c.title,c.status,p.name AS project_name,p.client FROM client_access_links l JOIN changes c ON c.id=l.change_id AND c.workspace_id=l.workspace_id JOIN projects p ON p.id=c.project_id AND p.workspace_id=c.workspace_id WHERE l.workspace_id=? ORDER BY l.created_at DESC LIMIT ?").bind(wid,limit).all();
- return json({links:rows.results,limit});
+ const limit=pageLimit(url,50,100),cursor=decodeCursor(url.searchParams.get("cursor")),search=optionalSearch(url.searchParams.get("search")),state=url.searchParams.get("state")||"all",now=new Date().toISOString();
+ if(!["all","active","used","revoked","expired"].includes(state))throw new ApiError(400,"state is invalid.");
+ const prefix=search.replace(/[\\%_]/g,"\\$&")+"%",cursorAt=cursor?.createdAt||"",cursorId=cursor?.id||"";
+ const rows=await db().prepare("SELECT l.id,l.change_id,l.proposal_version,l.client_email,l.expires_at,l.revoked_at,l.used_at,l.created_by,l.created_at,c.title,c.status,p.name AS project_name,p.client FROM client_access_links l JOIN changes c ON c.id=l.change_id AND c.workspace_id=l.workspace_id JOIN projects p ON p.id=c.project_id AND p.workspace_id=c.workspace_id WHERE l.workspace_id=? AND (?='' OR l.client_email LIKE ? ESCAPE '\\' OR c.title LIKE ? ESCAPE '\\' OR p.client LIKE ? ESCAPE '\\') AND (?='all' OR (?='active' AND l.used_at='' AND l.revoked_at='' AND l.expires_at>?) OR (?='used' AND l.used_at<>'') OR (?='revoked' AND l.revoked_at<>'') OR (?='expired' AND l.used_at='' AND l.revoked_at='' AND l.expires_at<=?)) AND (?='' OR l.created_at<? OR (l.created_at=? AND l.id<?)) ORDER BY l.created_at DESC,l.id DESC LIMIT ?").bind(wid,search,prefix,prefix,prefix,state,state,now,state,state,state,now,cursorAt,cursorAt,cursorAt,cursorId,limit+1).all<{id:string;created_at:string}>();
+ const page=pageResult(rows.results as ({id:string;created_at:string}&Record<string,unknown>)[],limit);
+ return json({...page,links:page.items});
 }catch(e){return failure(e);}}
 
 export async function POST(request:Request){try{
