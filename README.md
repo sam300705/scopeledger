@@ -15,7 +15,7 @@ A working B2B pilot for fixed-scope service firms: preserve the agreed scope, pr
 - Pending → approved/declined/withdrawn; approved → delivered, with role and optimistic-version checks.
 - Separate estimated, approved, delivered, invoiced and paid amounts. Invoices and payments are append-only commercial records with explicit void/reversal history; aggregate invoiced/paid totals remain derived compatibility fields. Approved value is never described as collected revenue.
 - Staff-recorded decision evidence distinguished from direct client-portal decisions.
-- Expiring/revocable one-time client approval links bound to one proposal version. Stale/replayed links fail closed and revisions invalidate outstanding links. Authorized staff can reload safe link metadata and revoke active links without exposing raw tokens or token hashes.
+- Expiring/revocable one-time client approval links bound to one proposal version. Stale/replayed links fail closed and revisions invalidate outstanding links. Newly created links carry the raw capability in the URL fragment rather than the request query; the client page removes that fragment immediately and sends the token to the API only in a JSON body. Authorized staff can reload safe link metadata and revoke active links without exposing raw tokens or token hashes.
 - Client portal for approve, decline or clarification, with intended-email verification and explicit scope/fee/schedule confirmation. It is not described as a certified electronic signature.
 - Durable rate limiting for public invitation/client-approval capability attempts without storing raw IP addresses.
 - Authenticated downloadable proposal/change-summary HTML using immutable proposal snapshots and current commercial status.
