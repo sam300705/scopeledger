@@ -5,7 +5,7 @@ A working B2B pilot for fixed-scope service firms: preserve the agreed scope, pr
 ## What works
 
 - Company workspaces with tenant isolation checked on API reads/writes.
-- Owner, editor, reviewer and viewer roles, plus expiring/revocable invitations whose acceptance requires the invited authenticated email.
+- Owner, editor, reviewer and viewer roles. Accepted invitations bind membership to the authenticated provider user ID; legacy email-only memberships are bound on first verified sign-in so later email changes do not transfer access to a different account.
 - A real invitation acceptance page; invitation capability values are hashed at rest and never returned in owner listing/export records.
 - Original project scope/budget/rate/date preserved as the baseline; corrections and commercial changes use versioned amendments instead of overwriting history.
 - Project archiving/restoration with active-work safeguards.
