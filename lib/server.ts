@@ -40,9 +40,10 @@ export async function beginIdempotency(request:Request,workspaceId:string,actorI
  if(existing.status_code===0)throw new ApiError(409,"An identical request with this Idempotency-Key is already processing.");
  try{return {kind:"replay",response:json(JSON.parse(existing.response_json),existing.status_code)};}catch{throw new ApiError(409,"The stored idempotent response is unavailable. Retry with a new key.");}
 }
-export function completeIdempotency(claim:IdempotencyClaim,payload:unknown,status:number){
+export function completeIdempotency(claim:IdempotencyClaim,payload:unknown,status:number,requirePreviousChange=false){
  if(claim.kind!=="claimed")return null;
- return db().prepare("UPDATE idempotency_keys SET response_json=?,status_code=? WHERE id=? AND request_hash=? AND status_code=0").bind(JSON.stringify(payload),status,claim.id,claim.requestHash);
+ const sql=requirePreviousChange?"UPDATE idempotency_keys SET response_json=?,status_code=? WHERE id=? AND request_hash=? AND status_code=0 AND changes()=1":"UPDATE idempotency_keys SET response_json=?,status_code=? WHERE id=? AND request_hash=? AND status_code=0";
+ return db().prepare(sql).bind(JSON.stringify(payload),status,claim.id,claim.requestHash);
 }
 export async function releaseIdempotency(claim:IdempotencyClaim){
  if(claim.kind!=="claimed")return;
