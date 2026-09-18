@@ -26,7 +26,7 @@ On the currently owner-private Site, the owner must separately grant the intende
 
 ## Client approval portal
 
-Client approval links are random one-time capability links with a stored hash, expiry, revocation and proposal-version binding. Public reads and decision attempts are durably throttled. The client must enter the intended contact email and explicitly confirm the proposal's scope, fee and schedule impact for approve/decline. Clarification requires a meaningful message. A later proposal revision revokes outstanding links. Used, expired, revoked and stale-version links fail closed.
+Client approval links are random one-time capability links with a stored hash, expiry, revocation and proposal-version binding. Newly created links place the raw capability in a URL fragment rather than the HTTP query; the client page removes the fragment immediately and loads proposal data by sending the token in a JSON request body, reducing request-URL/proxy-log leakage. This does not yet replace the in-browser capability with a separate HttpOnly scoped session. Public reads and decision attempts are durably throttled. The client must enter the intended contact email and explicitly confirm the proposal's scope, fee and schedule impact for approve/decline. Clarification requires a meaningful message. A later proposal revision revokes outstanding links. Used, expired, revoked and stale-version links fail closed.
 
 The proposal shown to the client contains the immutable project scope/budget/date snapshot that existed when that proposal version was issued. Later project amendments do not silently change an already-issued proposal.
 
