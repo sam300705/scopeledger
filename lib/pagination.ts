@@ -32,7 +32,7 @@ export function decodeCursor(raw:string|null):PageCursor|null{
   const base=raw.replaceAll("-","+").replaceAll("_","/");
   const padded=base+"=".repeat((4-base.length%4)%4);
   const value=JSON.parse(atob(padded));
-  if(!Array.isArray(value)||value.length!==2||typeof value[0]!=="string"||typeof value[1]!=="string"||!value[0]||!value[1])throw new Error("bad cursor");
+  if(!Array.isArray(value)||value.length!==2||typeof value[0]!=="string"||typeof value[1]!=="string"||!value[0]||!value[1]||value[0].length>64||value[1].length>200||Number.isNaN(Date.parse(value[0])))throw new Error("bad cursor");
   return {createdAt:value[0],id:value[1]};
  }catch{throw new ApiError(400,"cursor is invalid.");}
 }
