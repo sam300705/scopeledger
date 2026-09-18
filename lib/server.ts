@@ -22,4 +22,30 @@ export async function publicRateLimit(request:Request,namespace:string,token:str
  await rateLimit(`${namespace}:pair:${ipPart}:${tokenPart}`,limit,windowSeconds);
  await cleanupRateLimits(Math.max(86400,windowSeconds*20));
 }
+export type IdempotencyClaim={kind:"none"}|{kind:"claimed";id:string;requestHash:string}|{kind:"replay";response:Response};
+export async function beginIdempotency(request:Request,workspaceId:string,actorId:string,operation:string,payload:unknown):Promise<IdempotencyClaim>{
+ const requestKey=(request.headers.get("idempotency-key")||"").trim();
+ if(!requestKey)return {kind:"none"};
+ if(!/^[A-Za-z0-9._:-]{8,128}$/.test(requestKey))throw new ApiError(400,"Idempotency-Key must be 8-128 safe characters.");
+ const requestHash=await hashToken(JSON.stringify(payload)),id=crypto.randomUUID(),now=new Date().toISOString();
+ const completedCutoff=new Date(Date.now()-24*60*60*1000).toISOString(),pendingCutoff=new Date(Date.now()-15*60*1000).toISOString();
+ const result=await db().batch([
+  db().prepare("DELETE FROM idempotency_keys WHERE (status_code<>0 AND created_at<?) OR (status_code=0 AND created_at<?)").bind(completedCutoff,pendingCutoff),
+  db().prepare("INSERT OR IGNORE INTO idempotency_keys(id,workspace_id,actor_id,operation,request_key,request_hash,response_json,status_code,created_at) VALUES(?,?,?,?,?,?,'',0,?)").bind(id,workspaceId,actorId,operation,requestKey,requestHash,now)
+ ]);
+ if(result[1].meta.changes===1)return {kind:"claimed",id,requestHash};
+ const existing=await db().prepare("SELECT id,request_hash,response_json,status_code FROM idempotency_keys WHERE workspace_id=? AND actor_id=? AND operation=? AND request_key=?").bind(workspaceId,actorId,operation,requestKey).first<{id:string;request_hash:string;response_json:string;status_code:number}>();
+ if(!existing)throw new ApiError(409,"This idempotent request could not be resolved. Retry with a new key.");
+ if(existing.request_hash!==requestHash)throw new ApiError(409,"This Idempotency-Key was already used with a different request.");
+ if(existing.status_code===0)throw new ApiError(409,"An identical request with this Idempotency-Key is already processing.");
+ try{return {kind:"replay",response:json(JSON.parse(existing.response_json),existing.status_code)};}catch{throw new ApiError(409,"The stored idempotent response is unavailable. Retry with a new key.");}
+}
+export function completeIdempotency(claim:IdempotencyClaim,payload:unknown,status:number){
+ if(claim.kind!=="claimed")return null;
+ return db().prepare("UPDATE idempotency_keys SET response_json=?,status_code=? WHERE id=? AND request_hash=? AND status_code=0").bind(JSON.stringify(payload),status,claim.id,claim.requestHash);
+}
+export async function releaseIdempotency(claim:IdempotencyClaim){
+ if(claim.kind!=="claimed")return;
+ await db().batch([db().prepare("DELETE FROM idempotency_keys WHERE id=? AND request_hash=? AND status_code=0").bind(claim.id,claim.requestHash)]);
+}
 export function failure(error:unknown){if(error instanceof ZodError)return json({error:error.issues.map(x=>`${x.path.join('.')}: ${x.message}`).join("; ")},400);if(error instanceof ApiError)return json({error:error.message},error.status);const reference=crypto.randomUUID();console.error("ScopeLedger operation failed",{reference,message:error instanceof Error?error.message:"Unknown failure"});return json({error:"We could not save or load these records. Your input is still here; please try again.",reference},503);}
