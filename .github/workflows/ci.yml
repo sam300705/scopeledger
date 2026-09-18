@@ -17,4 +17,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: node --test tests/*.cjs
       - run: node node_modules/typescript/bin/tsc --noEmit
+      - run: pnpm run lint
       - run: pnpm run build

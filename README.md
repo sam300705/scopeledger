@@ -5,7 +5,7 @@ A working B2B pilot for fixed-scope service firms: preserve the agreed scope, pr
 ## What works
 
 - Company workspaces with tenant isolation checked on API reads/writes.
-- Owner, editor, reviewer and viewer roles, plus expiring/revocable invitations whose acceptance requires the invited authenticated email.
+- Owner, editor, reviewer and viewer roles. Accepted invitations bind membership to the authenticated provider user ID; legacy email-only memberships are bound on first verified sign-in so later email changes do not transfer access to a different account.
 - A real invitation acceptance page; invitation capability values are hashed at rest and never returned in owner listing/export records.
 - Original project scope/budget/rate/date preserved as the baseline; corrections and commercial changes use versioned amendments instead of overwriting history.
 - Project archiving/restoration with active-work safeguards.
@@ -13,9 +13,9 @@ A working B2B pilot for fixed-scope service firms: preserve the agreed scope, pr
 - Hourly, fixed-fee and itemized proposal pricing with exclusions and server-side amount calculation.
 - Immutable submitted proposal versions containing the exact project baseline/amendment snapshot used when the proposal was issued.
 - Pending → approved/declined/withdrawn; approved → delivered, with role and optimistic-version checks.
-- Separate estimated, approved, delivered, invoiced and paid amounts. Approved value is never described as collected revenue.
+- Separate estimated, approved, delivered, invoiced and paid amounts. Invoices and payments are append-only commercial records with explicit void/reversal history; aggregate invoiced/paid totals remain derived compatibility fields. Approved value is never described as collected revenue.
 - Staff-recorded decision evidence distinguished from direct client-portal decisions.
-- Expiring/revocable one-time client approval links bound to one proposal version. Stale/replayed links fail closed and revisions invalidate outstanding links.
+- Expiring/revocable one-time client approval links bound to one proposal version. Stale/replayed links fail closed and revisions invalidate outstanding links. Newly created links carry the raw capability in the URL fragment rather than the request query; the client page removes that fragment immediately and sends the token to the API only in a JSON body. Authorized staff can reload safe link metadata and revoke active links without exposing raw tokens or token hashes.
 - Client portal for approve, decline or clarification, with intended-email verification and explicit scope/fee/schedule confirmation. It is not described as a certified electronic signature.
 - Durable rate limiting for public invitation/client-approval capability attempts without storing raw IP addresses.
 - Authenticated downloadable proposal/change-summary HTML using immutable proposal snapshots and current commercial status.
@@ -30,7 +30,7 @@ A working B2B pilot for fixed-scope service firms: preserve the agreed scope, pr
 
 This remains an **internal-pilot codebase**, not a general-customer production service. The currently deployed Site is owner-private. Current ChatGPT Sites sharing can support selected external viewers where the owner's plan/workspace permits it, but Site audience and ScopeLedger workspace membership are separate controls. A company user needs both Site access and the appropriate ScopeLedger membership/invitation. Production audience changes must be deliberate and browser-tested with the intended visitor account.
 
-Authentication currently uses the hosting platform's ChatGPT sign-in/trusted identity context. **Do not redeploy this identity adapter behind a public endpoint that trusts caller-controlled identity headers.** If Sites sharing/sign-in cannot meet the commercial audience requirements for this account, migrate to a host/authentication system that validates sessions/tokens server-side before the ScopeLedger authorization layer.
+Authentication currently uses the hosting platform's ChatGPT sign-in/trusted identity context behind a small identity-provider abstraction. That abstraction makes a future commercial identity migration possible without changing workspace authorization semantics, but it is not itself a new authentication system. **Do not redeploy the ChatGPT Sites identity adapter behind a public endpoint that trusts caller-controlled identity headers.** If Sites sharing/sign-in cannot meet the commercial audience requirements for this account, migrate to a host/authentication system that validates sessions/tokens server-side before the ScopeLedger authorization layer.
 
 The client approval portal and invitation acceptance flow are implemented in the application, but they must not be sent to real clients/users until this branch is deployed, migrations are applied, and the selected audience/sign-in behavior has been verified from independent test accounts. Client decisions are workflow records, not certified electronic signatures.
 
@@ -54,6 +54,7 @@ Use Node 22.13+ and the package-manager version declared in `package.json`. The 
 pnpm install --frozen-lockfile
 node --test tests/*.cjs
 node node_modules/typescript/bin/tsc --noEmit
+pnpm run lint
 pnpm run build
 ```
 
@@ -79,12 +80,13 @@ These tests are not substitutes for Cloudflare D1 behaviour, the hosting identit
 - `app/api/client-links/`, `app/api/client-approval/`: one-time client access and decisions.
 - `app/api/invitations/`: invitation creation/listing/revocation/acceptance.
 - `app/api/projects/`: baseline creation, amendments and archive/restore.
-- `app/api/finance/`: invoiced/paid tracking after approval.
+- `app/api/finance/`: auditable invoice/payment ledger actions after approval, including void and reversal history.
 - `app/api/export/`: CSV and owner-only full company JSON export.
 - `app/api/data-lifecycle/`: deletion request, cancellation and finalization.
 - `app/api/capabilities/`: truthful external-integration availability.
 - `app/api/proposal/`: downloadable proposal/change summary.
 - `app/api/health/`: privacy-safe datastore readiness check.
+- `lib/identity.ts`: current trusted-host identity provider boundary for future auth migration.
 - `lib/domain.ts`: validation, transitions and pricing.
 - `lib/server.ts`: identity, authorization, D1, token hashing, durable throttling and API error boundaries.
 - `db/schema.ts`, `drizzle/`: schema and additive migrations.

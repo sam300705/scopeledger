@@ -14,6 +14,14 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
   ]),
   {
+    files: ["tests/**/*.cjs"],
+    rules: {
+      // The integration harness intentionally uses CommonJS so Node can load
+      // transpiled route modules without a second test build pipeline.
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],
     rules: {
       // These files are vendored verbatim from shadcn@4.17.0. Keep the
