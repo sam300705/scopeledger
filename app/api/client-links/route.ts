@@ -24,7 +24,7 @@ export async function POST(request:Request){try{
   db().prepare("INSERT INTO client_access_links(id,workspace_id,change_id,proposal_version,token_hash,client_email,expires_at,revoked_at,used_at,created_by,created_at) VALUES(?,?,?,?,?,?,?,'','',?,?)").bind(id,wid,c.id,c.proposal_version,tokenHash,c.client_email.toLowerCase(),expires,u.email,now),
   audit(wid,c.id,"Client approval link created",u.email,`${c.title} — proposal v${c.proposal_version}; expires ${expires}`)
  ]);
- return json({id,token,path:"/client-approval?token="+encodeURIComponent(token),expires_at:expires,client_email:c.client_email,proposal_version:c.proposal_version},201);
+ return json({id,token,path:"/client-approval#token="+encodeURIComponent(token),expires_at:expires,client_email:c.client_email,proposal_version:c.proposal_version},201);
 }catch(e){return failure(e);}}
 
 export async function DELETE(request:Request){try{
