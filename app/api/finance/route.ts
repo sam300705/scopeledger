@@ -1,5 +1,6 @@
 import { authorize,requireRole,db,body,json,failure,ApiError,beginIdempotency,completeIdempotency,releaseIdempotency } from "@/lib/server";
 import { financeActionInput } from "@/lib/domain";
+import { decodeCursor,optionalDate,optionalSearch,pageLimit,pageResult } from "@/lib/pagination";
 
 type ChangeFinanceRow={status:string;version:number;title:string;approved_amount:number;invoiced_amount:number;paid_amount:number};
 
@@ -8,17 +9,31 @@ async function loadChange(changeId:string,workspaceId:string){
 }
 
 export async function GET(request:Request){try{
- const url=new URL(request.url),wid=url.searchParams.get("workspace")||"",changeId=url.searchParams.get("change")||"";
+ const url=new URL(request.url),wid=url.searchParams.get("workspace")||"",changeId=url.searchParams.get("change")||"",kind=url.searchParams.get("kind")||"";
  await authorize(wid);
- const invoices=await db().prepare(changeId?
-  "SELECT id,change_id,reference,amount,status,due_date,issued_at,created_by,created_at,voided_at,void_reason FROM invoices WHERE workspace_id=? AND change_id=? ORDER BY created_at DESC":
-  "SELECT id,change_id,reference,amount,status,due_date,issued_at,created_by,created_at,voided_at,void_reason FROM invoices WHERE workspace_id=? ORDER BY created_at DESC LIMIT 500"
- ).bind(...(changeId?[wid,changeId]:[wid])).all();
- const payments=await db().prepare(changeId?
-  "SELECT id,change_id,invoice_id,reference,amount,status,received_at,created_by,created_at,reversed_at,reversal_reason FROM payments WHERE workspace_id=? AND change_id=? ORDER BY created_at DESC":
-  "SELECT id,change_id,invoice_id,reference,amount,status,received_at,created_by,created_at,reversed_at,reversal_reason FROM payments WHERE workspace_id=? ORDER BY created_at DESC LIMIT 1000"
- ).bind(...(changeId?[wid,changeId]:[wid])).all();
- return json({invoices:invoices.results,payments:payments.results});
+ if(!kind){
+  const invoices=await db().prepare(changeId?
+   "SELECT id,change_id,reference,amount,status,due_date,issued_at,created_by,created_at,voided_at,void_reason FROM invoices WHERE workspace_id=? AND change_id=? ORDER BY created_at DESC":
+   "SELECT id,change_id,reference,amount,status,due_date,issued_at,created_by,created_at,voided_at,void_reason FROM invoices WHERE workspace_id=? ORDER BY created_at DESC LIMIT 500"
+  ).bind(...(changeId?[wid,changeId]:[wid])).all();
+  const payments=await db().prepare(changeId?
+   "SELECT id,change_id,invoice_id,reference,amount,status,received_at,created_by,created_at,reversed_at,reversal_reason FROM payments WHERE workspace_id=? AND change_id=? ORDER BY created_at DESC":
+   "SELECT id,change_id,invoice_id,reference,amount,status,received_at,created_by,created_at,reversed_at,reversal_reason FROM payments WHERE workspace_id=? ORDER BY created_at DESC LIMIT 1000"
+  ).bind(...(changeId?[wid,changeId]:[wid])).all();
+  return json({invoices:invoices.results,payments:payments.results});
+ }
+ if(!["invoice","payment"].includes(kind))throw new ApiError(400,"kind must be invoice or payment.");
+ const limit=pageLimit(url),cursor=decodeCursor(url.searchParams.get("cursor")),search=optionalSearch(url.searchParams.get("search")),status=url.searchParams.get("status")||"",from=optionalDate(url.searchParams.get("from"),"from"),to=optionalDate(url.searchParams.get("to"),"to");
+ if(changeId.length>200)throw new ApiError(400,"change filter is too long.");
+ if(kind==="invoice"&&status&&!["issued","void"].includes(status))throw new ApiError(400,"invoice status is invalid.");
+ if(kind==="payment"&&status&&!["received","reversed"].includes(status))throw new ApiError(400,"payment status is invalid.");
+ const prefix=search.replace(/[\\%_]/g,"\\$&")+"%",fromAt=from?from+"T00:00:00.000Z":"",toAt=to?to+"T23:59:59.999Z":"",cursorAt=cursor?.createdAt||"",cursorId=cursor?.id||"";
+ if(kind==="invoice"){
+  const rows=await db().prepare("SELECT id,change_id,reference,amount,status,due_date,issued_at,created_by,created_at,voided_at,void_reason FROM invoices WHERE workspace_id=? AND (?='' OR change_id=?) AND (?='' OR status=?) AND (?='' OR reference LIKE ? ESCAPE '\\') AND (?='' OR created_at>=?) AND (?='' OR created_at<=?) AND (?='' OR created_at<? OR (created_at=? AND id<?)) ORDER BY created_at DESC,id DESC LIMIT ?").bind(wid,changeId,changeId,status,status,search,prefix,fromAt,fromAt,toAt,toAt,cursorAt,cursorAt,cursorAt,cursorId,limit+1).all<{id:string;created_at:string}>();
+  return json(pageResult(rows.results as ({id:string;created_at:string}&Record<string,unknown>)[],limit));
+ }
+ const rows=await db().prepare("SELECT id,change_id,invoice_id,reference,amount,status,received_at,created_by,created_at,reversed_at,reversal_reason FROM payments WHERE workspace_id=? AND (?='' OR change_id=?) AND (?='' OR status=?) AND (?='' OR reference LIKE ? ESCAPE '\\') AND (?='' OR created_at>=?) AND (?='' OR created_at<=?) AND (?='' OR created_at<? OR (created_at=? AND id<?)) ORDER BY created_at DESC,id DESC LIMIT ?").bind(wid,changeId,changeId,status,status,search,prefix,fromAt,fromAt,toAt,toAt,cursorAt,cursorAt,cursorAt,cursorId,limit+1).all<{id:string;created_at:string}>();
+ return json(pageResult(rows.results as ({id:string;created_at:string}&Record<string,unknown>)[],limit));
 }catch(e){return failure(e);}}
 
 export async function POST(request:Request){try{
